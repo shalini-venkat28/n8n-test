@@ -5,7 +5,6 @@ from typing import Any, Dict
 
 from dotenv import load_dotenv
 from pydantic import ValidationError
-###
 from models.validation import (
     CanonicalFieldSelectionResponse,
     IntentClassificationResponse,
@@ -29,7 +28,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
+print("we are happy always")
 
 async def llm_call(call_type: str, user_id: str, user_query: str, user_history: list, **kwargs) -> Dict[str, Any]:
     """Process LLM request with call_type and context parameters using AWS Bedrock

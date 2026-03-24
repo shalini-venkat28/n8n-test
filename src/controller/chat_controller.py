@@ -31,6 +31,7 @@ async def process_loan_insights(
         # Validate JWT token from request headers
         token = credentials.credentials
         jwt_data = validate_jwt_token(token)
+        print(jwt_data,"=================")
         
         if not jwt_data.get("is_valid"):
             raise HTTPException(status_code=jwt_data.get("code", 401), detail=jwt_data.get("error", "Invalid token"))

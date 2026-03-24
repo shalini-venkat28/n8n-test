@@ -1,1 +1,2 @@
-print("value.py")
+a = 10
+print(a)

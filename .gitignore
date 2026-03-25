@@ -1,0 +1,25 @@
+# Environment files
+.env
+.env.*
+!.env.sample
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ruff
+.ruff_cache/

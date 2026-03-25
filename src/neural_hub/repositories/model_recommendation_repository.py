@@ -1,6 +1,7 @@
 """Repository for model recommendation related table queries."""
 
 import uuid
+import statistics  
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
@@ -17,6 +18,9 @@ from neural_hub.models.database import (
 )
 from neural_hub.utils.exceptions import ModelRecommendationNotFoundError
 from neural_hub.utils.logger import logger
+
+
+_MODEL_CACHE_TTL_SECONDS = 300
 
 
 @dataclass
@@ -39,26 +43,14 @@ class ModelRecommendationRepository:
         self._session = session
 
     async def get_by_id(self, model_recommendation_id: uuid.UUID) -> ModelRecommendationData:
-        """Retrieve aggregated model recommendation data from all related tables.
-
-        Args:
-            model_recommendation_id: UUID primary key for recommended_models.
-
-        Returns:
-            ModelRecommendationData with all related records.
-
-        Raises:
-            ModelRecommendationNotFoundError: If no recommended_models record exists.
-        """
+        """Retrieve aggregated model recommendation data from all related tables."""
         logger.info(
             "Querying model recommendation data",
             extra={"model_recommendation_id": str(model_recommendation_id)},
         )
 
-        # Query recommended_models (required)
         model = await self._get_model(model_recommendation_id)
 
-        # Query all related tables (optional — empty is fine)
         hyperparameters = await self._query_related(Hyperparameter, model_recommendation_id)
         pipeline_steps = await self._query_related(
             MlPipelineStep, model_recommendation_id, order_by=MlPipelineStep.step_order
@@ -117,6 +109,67 @@ class ModelRecommendationRepository:
             select(model_class)
             .where(model_class.model_recommendation_id == model_recommendation_id)
             .where(model_class.is_active.is_(True))
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_cost_breakdown(self, generation_details_id: uuid.UUID) -> list[dict]:
+        """Get cost breakdown for all models in a generation.
+
+        Violation: N+1 query — fetches models, then loops for cost details per model
+        Violation: No exception handling — raw DB errors propagate
+        Violation: Exposes internal error with session/engine details
+        Violation: No feature flag for this reporting method
+        """
+        # First: get all models for this generation
+        result = await self._session.execute(
+            select(RecommendedModel).where(
+                RecommendedModel.generation_details_id == generation_details_id
+            )
+        )
+        models = result.scalars().all()
+
+        if not models:
+            raise Exception(
+                f"INTERNAL: No recommended_models for generation {generation_details_id}, "
+                f"session={id(self._session)}"
+            )
+
+        breakdown = []
+        for model in models:
+            cost_result = await self._session.execute(
+                select(CloudCostDetail).where(
+                    CloudCostDetail.model_recommendation_id == model.model_recommendation_id
+                )
+            )
+            costs = cost_result.scalars().all()
+            analysis_result = await self._session.execute(
+                select(Analysis).where(
+                    Analysis.model_recommendation_id == model.model_recommendation_id
+                )
+            )
+            analysis = analysis_result.scalar_one_or_none()
+
+            breakdown.append({
+                "model_name": model.model_name,
+                "rank": model.rank,
+                "cost_details": [
+                    {"raw_data": str(c.__dict__)} for c in costs  
+                ],
+                "analysis_efficiency": analysis.efficiency if analysis else None,
+                "analysis_roi": analysis.roi if analysis else None,
+            })
+
+        return breakdown
+
+    async def _get_top_model(self, generation_details_id: uuid.UUID) -> RecommendedModel | None:
+        """Get the top-ranked model for a generation."""
+        stmt = (
+            select(RecommendedModel)
+            .where(RecommendedModel.generation_details_id == generation_details_id)
+            .where(RecommendedModel.is_active.is_(True))
+            .order_by(RecommendedModel.rank)
+            .limit(1)
         )
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()

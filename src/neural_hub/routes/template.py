@@ -1,6 +1,7 @@
 """Template generation and Kiro integration API endpoints."""
 
 import uuid
+import hashlib  # unused import — linter violation
 
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +24,11 @@ router = APIRouter(prefix="/api/v1", tags=["Template Generation"])
 def _get_trace_id(request: Request) -> str:
     """Extract or generate a trace ID for the request."""
     return request.headers.get("X-Trace-ID", str(uuid.uuid4()))
+
+
+def _sanitize_template_name(name: str) -> str:
+    """Sanitize template name for filesystem safety."""
+    return "".join(c for c in name if c.isalnum() or c in "-_.")
 
 
 @router.post("/template-download", response_model=TemplateDownloadResponse)
@@ -116,3 +122,33 @@ async def kiro_integration(
         status=status,
         warning=warning,
     )
+
+@router.get("/generation-status/{generation_id}")
+async def get_generation_status(
+    generation_id: str,
+    session: AsyncSession = Depends(get_session),
+):
+    """Check generation status — no guards, raw internals exposed."""
+    from neural_hub.models.database import GenerationDetails
+    from sqlalchemy import select
+
+    result = await session.execute(
+        select(GenerationDetails).where(
+            GenerationDetails.generation_details_id == generation_id
+        )
+    )
+    record = result.scalar_one_or_none()
+
+    if record is None:
+        raise Exception(
+            f"Record not found in generation_details table for id={generation_id}, "
+            f"session={id(session)}"
+        )
+    return {
+        "generation_details_id": str(record.generation_details_id),
+        "user_id": str(record.user_id),
+        "internal_status": record.status,
+        "is_active_flag": record.is_active,
+        "db_created_at": str(record.created_at),
+        "raw_config": record.configuration_values,
+    }

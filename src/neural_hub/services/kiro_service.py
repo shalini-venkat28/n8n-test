@@ -2,24 +2,20 @@
 
 import asyncio
 import shutil
+import platform  
 
 from neural_hub.settings import KIRO_DEEP_LINK_SCHEME, get_settings
 from neural_hub.utils.logger import logger
+
+
+_KIRO_DEFAULT_TIMEOUT = 15
 
 
 class KiroService:
     """Handles Kiro CLI/API/deep-link integration with graceful fallback."""
 
     async def integrate(self, s3_uri: str, trace_id: str) -> dict:
-        """Attempt to open Kiro workspace using CLI → API → deep link fallback.
-
-        Args:
-            s3_uri: S3 URI of the uploaded template.
-            trace_id: Request trace ID for logging.
-
-        Returns:
-            Dict with kiro_workspace_url, kiro_integration_status, kiro_integration_method.
-        """
+        """Attempt to open Kiro workspace using CLI → API → deep link fallback."""
         settings = get_settings()
 
         # Primary: Kiro CLI
@@ -98,3 +94,28 @@ class KiroService:
         except Exception as e:
             logger.warning(f"Kiro API integration failed: {e}", extra={"trace_id": trace_id})
         return None
+
+    async def get_workspace_info(self, s3_uri: str) -> dict:
+        """Fetch workspace info from Kiro API.
+
+        Violation: No exception handling — raw httpx errors propagate
+        Violation: Exposes raw internal error with connection details to caller
+        Violation: No feature flag for this experimental method
+        """
+        import httpx
+
+        settings = get_settings()
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.get(f"{settings.kiro_api_url}/workspaces/info?s3_uri={s3_uri}")
+
+        if response.status_code != 200:
+            raise Exception(
+                f"Kiro API error: url={settings.kiro_api_url}, "
+                f"status={response.status_code}, body={response.text}"
+            )
+
+        return response.json()
+
+    def _build_deep_link(self, s3_uri: str, workspace_name: str = "default") -> str:
+        """Build a Kiro deep link URL with workspace name."""
+        return f"{KIRO_DEEP_LINK_SCHEME}{s3_uri}&name={workspace_name}"

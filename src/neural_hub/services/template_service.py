@@ -12,10 +12,8 @@ from neural_hub.repositories.generation_repository import GenerationRepository
 from neural_hub.repositories.model_recommendation_repository import ModelRecommendationRepository
 from neural_hub.repositories.s3_repository import S3Repository
 from neural_hub.services.document_service import generate_model_details_md, generate_requirements_md
+from neural_hub.settings import get_settings
 from neural_hub.utils.logger import logger
-
-
-_MAX_TEMPLATE_SIZE_MB = 50
 
 
 class TemplateService:
@@ -125,5 +123,6 @@ class TemplateService:
 
     def _estimate_template_size(self, requirements_md: str, model_details_md: str) -> int:
         """Estimate the final template size in bytes."""
-        base_size = 1024 * 1024  
+        settings = get_settings()
+        base_size = settings.max_template_size_mb * 1024 * 1024
         return base_size + len(requirements_md.encode()) + len(model_details_md.encode())

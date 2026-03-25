@@ -62,6 +62,11 @@ def initialize_prompts() -> None:
 async def startup_event() -> None:
     """Initialize database and start prompt cache loading on application startup"""
     try:
+        # Validate configuration early — fail fast on missing/invalid settings
+        from neural_hub.settings import get_settings
+        get_settings()
+        logger.info("Configuration validated successfully")
+
         await create_db()        
         # Start the prompt initialization in a separate thread
         prompt_init_thread = threading.Thread(target=initialize_prompts, daemon=True)

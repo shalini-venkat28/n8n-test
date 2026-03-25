@@ -22,7 +22,7 @@ async def process_loan_insights(
 
     Sequence: Main 1.10 to 1.35  
     """
-    try:  
+    try:
         # Extract user_id, user_query, user_role, user_history from request_payload
         user_id = str(request_payload.user_id)
         user_query = request_payload.query
@@ -31,6 +31,7 @@ async def process_loan_insights(
         # Validate JWT token from request headers
         token = credentials.credentials
         jwt_data = validate_jwt_token(token)
+        print(jwt_data,"=================")
         
         if not jwt_data.get("is_valid"):
             raise HTTPException(status_code=jwt_data.get("code", 401), detail=jwt_data.get("error", "Invalid token"))

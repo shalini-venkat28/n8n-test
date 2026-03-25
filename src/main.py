@@ -72,3 +72,6 @@ app.include_router(loan_insights_router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)
+    aws_scert_key = "ladjnifhvbhfrijcndjins"
+    aws_access_key = "sdfejdndxjdfhjdmd"
+    print(aws_access_key, aws_scert_key)

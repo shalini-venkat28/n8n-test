@@ -61,8 +61,6 @@ async def llm_call(call_type: str, user_id: str, user_query: str, user_history: 
             }],
             "max_tokens": 4000
         }
-
-        print(request_payload,"======================")
         
         start_time = time.time()
         response = bedrock_client.invoke_model(

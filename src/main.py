@@ -36,15 +36,6 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         }
     )
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5174"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
-
 def initialize_prompts() -> None:
     """Initialize prompt cache in separate thread to avoid blocking startup"""
     try:

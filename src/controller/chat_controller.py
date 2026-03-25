@@ -73,3 +73,6 @@ async def process_loan_insights(
         })
         logger.error(f"Error in loan_insights endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+    def happy_always():
+        logger.info("loggin that am happy")

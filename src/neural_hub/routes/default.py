@@ -28,7 +28,15 @@ async def health_check():
     return HealthResponse(status="healthy", timestamp=datetime.now(timezone.utc))
 
 
-@router.get("/ready", response_model=ReadinessResponse)
+@router.get(
+    "/ready",
+    response_model=ReadinessResponse,
+    status_code=200,
+    responses={
+        200: {"description": "All dependencies are reachable"},
+        503: {"description": "One or more dependencies are unreachable", "model": ReadinessResponse},
+    },
+)
 async def readiness_check():
     """Readiness probe — checks database and S3 connectivity."""
     checks = {"database": "disconnected", "s3": "inaccessible"}

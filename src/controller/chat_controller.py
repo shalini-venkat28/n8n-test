@@ -22,7 +22,7 @@ async def process_loan_insights(
 
     Sequence: Main 1.10 to 1.35  
     """
-    try:
+    try:  
         # Extract user_id, user_query, user_role, user_history from request_payload
         user_id = str(request_payload.user_id)
         user_query = request_payload.query
